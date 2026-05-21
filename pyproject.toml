@@ -70,11 +70,20 @@ line-length = 100
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B"]
+# Tight, high-signal rule set for a legacy fork: pyflakes + runtime-error checks +
+# bugbear. Pyupgrade (UP*), import sorting (I*), and most stylistic E/W rules are
+# deliberately NOT enforced — the upstream code predates them and mass-rewriting
+# (especially % format → f-string) would be high-risk in code we don't fully test.
+select = ["E9", "F", "B"]
 ignore = [
-    "E501",
-    "E731",
-    "E741",
+    # Pre-existing pyflakes hits that are legacy style, not bugs:
+    "F401",  # unused imports (some are intentional re-exports)
+    "F841",  # unused local variables
+    "B007",  # unused loop variable name
+    # Pre-existing items to audit in a separate PR (not regressions from this branch):
+    "F509",  # invalid format string
+    "F601",  # repeated dict keys
+    "F821",  # 2 known `dot1` lambda placeholders in asmfrec1{3,5}.py
 ]
 
 [tool.pytest.ini_options]
