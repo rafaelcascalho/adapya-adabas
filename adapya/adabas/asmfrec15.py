@@ -12,7 +12,7 @@ percent = lambda i: "%d %%" % i
 plural_s = lambda j: '' if j == 1 else 's'
 
 dezi = lambda i: dot1 * i  # dezi(123) returns decimal('12.3')
-isep=lambda i:'{:12,d}'.format(i)
+isep=lambda i:f'{i:12,d}'
 # print 12 digits (or more if needed) right aligned with thousand separator ,
 # requires py2.7
 

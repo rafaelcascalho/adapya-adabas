@@ -83,7 +83,6 @@ todo: metadata with search commands
       metadata with multifetch (add offsets for each record)
 
 """
-from __future__ import print_function          # PY3
 
 __date__ = 'Date: 2012-03-06 15:17:53 +0100 (Tue, 06 Mar 2012) $'
 __version__ = '$Rev: 334 $'
@@ -105,13 +104,8 @@ import os
 def usage():
     print(__doc__)
 
-if sys.hexversion >= 0x3010100: # PY3
-    PY3 = True
-    getinput = input
-
-else:
-    PY3 = False
-    getinput = raw_input
+PY3 = True
+getinput = input
 
 
 def dehex(s): # unused: use adapya.base.evals or evalb (for byte strings)
@@ -131,7 +125,7 @@ def dehex(s): # unused: use adapya.base.evals or evalb (for byte strings)
     b'abc\x00'
 
     """
-    if type(s) == type(''):
+    if type(s) == str:
         sr = ''              # string type
         sx = r'\x'
     else:
@@ -146,7 +140,7 @@ def dehex(s): # unused: use adapya.base.evals or evalb (for byte strings)
         x = sl[1][0:2]      # hex chars after \x
         s = sl[1][2:]       # rest string
 
-        if type(s) == type(''):
+        if type(s) == str:
             sr += chr(int(x,base=16))
         else:
             sr += bytes.fromhex(x)

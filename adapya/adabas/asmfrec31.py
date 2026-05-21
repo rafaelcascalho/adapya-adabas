@@ -8,7 +8,7 @@ from decimal import Decimal
 
 dot1 = Decimal('0.1')
 
-isep=lambda i:'{:12,d}'.format(i)
+isep=lambda i:f'{i:12,d}'
 # print 12 digits (or more if needed) right aligned with thousand separator ,
 # requires py2.7
 

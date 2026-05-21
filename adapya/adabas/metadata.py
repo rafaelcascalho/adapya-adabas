@@ -13,7 +13,7 @@ Example: used with search.py (see there for more)
 """
 metamap = {}  #  map of metadata
 
-class Metadata(object):
+class Metadata:
     """ defines parameters needed for accessing records in database and file
     """
     def __init__(self,fb='',dmap=None,dprint=None,handler=None,\

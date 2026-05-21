@@ -7,8 +7,6 @@ The adapya.adabas.api module defines the Adabas and Adabasx classes which implem
 the Adabas API.
 
 """
-from __future__ import print_function          # PY3
-
 __date__='$Date: 2023-12-01 00:54:33 +0100 (Fri, 01 Dec 2023) $'
 __revision__='$Rev: 1072 $'
 
@@ -35,15 +33,6 @@ from adapya.base.datamap import Datamap, Uint1, Uint2, Uint4, Uint8, String, \
 from adapya.base.dump import dump
 from . import adaerror
 
-# fix Python2 difference: make iterator's next() methods available
-# as next() function -- copied from six
-try:
-    advance_iterator = next
-except NameError:
-    def advance_iterator(it):
-        return it.next()
-next = advance_iterator
-
 if sys.platform in ('win32','cli'): # CPython or IronPython
     import ctypes.util
     adalname = ctypes.util.find_library('adalnkx') # get full path of adalnkxsa
@@ -51,15 +40,48 @@ if sys.platform in ('win32','cli'): # CPython or IronPython
 else:
     adalname = 'libadalnkx.so'
 
-try:
-    adalink=ctypes.cdll.LoadLibrary(adalname)
-except OSError:
-    print('Running Python Version %s\n\ton platform %s, %d bit, byteorder=%s' % (
-         sys.version, sys.platform, sizeof(c_char_p)*8, sys.byteorder ))
-    print('"%s" could not be loaded: check that Adabas Client Library (ACL) directory is in path' %(adalname,))
-    raise
+# Allow importing this module without the Adabas Client Library installed.
+# This is required for CI smoke tests and for tooling (linters, doc builds,
+# static type checkers) that need to import adapya.adabas.api on hosts where
+# libadalnkx is not present. Any call that actually exercises the native
+# linkage will raise ProgrammingError with a clear message (see below).
+_SKIP_NATIVE = bool(os.environ.get('ADAPYA_SKIP_NATIVE_LOAD'))
+adalink = None
 
-if sys.platform != 'zos':
+
+class _MissingAdalnk:
+    """Sentinel used in place of the loaded native library when ACL is absent.
+
+    Any attribute access raises a clear ProgrammingError so users get an
+    actionable message instead of a confusing AttributeError deep in the stack.
+    """
+    __slots__ = ('_reason',)
+
+    def __init__(self, reason):
+        object.__setattr__(self, '_reason', reason)
+
+    def __getattr__(self, name):
+        raise ProgrammingError(
+            'Adabas Client Library (libadalnkx) is not loaded: %s. '
+            'Install ACL and ensure its directory is on the library search path '
+            '(LD_LIBRARY_PATH on Linux, PATH on Windows).' % self._reason)
+
+    def __bool__(self):  # so `if adalink:` still works as a presence check
+        return False
+
+
+if _SKIP_NATIVE:
+    adalink = _MissingAdalnk('skipped via ADAPYA_SKIP_NATIVE_LOAD')
+else:
+    try:
+        adalink = ctypes.cdll.LoadLibrary(adalname)
+    except OSError as _adalnk_err:
+        print('Running Python Version %s\n\ton platform %s, %d bit, byteorder=%s' % (
+             sys.version, sys.platform, sizeof(c_char_p)*8, sys.byteorder ))
+        print('"%s" could not be loaded: check that Adabas Client Library (ACL) directory is in path' %(adalname,))
+        raise
+
+if sys.platform != 'zos' and not isinstance(adalink, _MissingAdalnk):
     adalink.AdaSetParameter.argtypes = [c_char_p]
     adalink.AdaSetTimeout.argtypes = [c_int,c_int]
     adalink.adabas.argtypes = [c_char_p,c_char_p,c_char_p,c_char_p,c_char_p,c_char_p]
@@ -522,13 +544,8 @@ def setsaf(userid,password,newpass='',encrypter=None):
         ii = 16 # 108
         if newpass:
             ii+=8 # 100
-        if sys.hexversion < 0x03010100:
-            # PY2.7 ctypes.c_char needs string -> chr()
-            for i in range(ii):
-                safib[i] = chr(ord(safib[i])^ADASAFX)
-        else:
-            for i in range(ii):
-                safib[i] = ord(safib[i])^ADASAFX
+        for i in range(ii):
+            safib[i] = ord(safib[i])^ADASAFX
 
     if 0: dump(safib,'safib')
     i = adalink.AdaSetSaf(safib)
@@ -563,23 +580,6 @@ def setuidpw(dbid, userid, password, encrypter=None):
     # leave at \x00 as set from Abuf()
     # otherwise taken as newpassword function:
     # safi.newpassword=''
-    if 0:
-      if encrypter:
-        encrypter(safib)
-      else:
-        if sys.hexversion < 0x03010100:
-            for i in range(8):
-                # PY2 ctypes.c_char needs string -> chr()
-                safib[i] = chr(ord(safib[i])^ADASAFX)
-                safib[8+i] = chr(ord(safib[8+i])^ADASAFX)
-                # newpassword not used in this function:
-                # safib[16+i] = chr(ord(safib[16+i])^ADASAFX)
-        else:
-            for i in range(8):
-                safib[i] = ord(safib[i])^ADASAFX
-                safib[8+i] = ord(safib[8+i])^ADASAFX
-                # newpassword not used in this function:
-                # safib[16+i] = ord(safib[16+i])^ADASAFX
 
     i = adalink.lnk_set_uid_pw(dbid, safuid, safpw)
     return i
@@ -599,14 +599,10 @@ def s1(s, byteorder='@'):
     else:  # byteorder in '@='
         enco = UNICODE_INTERNAL
 
-    if sys.hexversion < 0x03010100:
-        if isinstance(s, unicode):
-            s = s.encode(enco)
-    else:
-        if isinstance(s, str):
-            s = s.encode(enco)
-        elif not isinstance(s, (bytes,bytearray)):
-            raise ProgrammingError("Cannot wrap %s in s1(), need type of str, bytes or bytearray"% (type(s),))
+    if isinstance(s, str):
+        s = s.encode(enco)
+    elif not isinstance(s, (bytes,bytearray)):
+        raise ProgrammingError("Cannot wrap %s in s1(), need type of str, bytes or bytearray"% (type(s),))
     assert len(s) < 255, 'Length of string is %d for s1(), exceeds 254 bytes'%len(s)
     return struct.pack('B',len(s)+1)+s
 
@@ -621,14 +617,10 @@ def s2(s, byteorder='@'):
     else:  # byteorder in '@='
         enco = UNICODE_INTERNAL
 
-    if sys.hexversion < 0x03010100:
-        if isinstance(s, unicode):
-            s = s.encode(enco)
-    else:
-        if isinstance(s, str):
-            s = s.encode(enco)
-        elif not isinstance(s, (bytes,bytearray)):
-            raise ProgrammingError("Cannot wrap %s in s4(), need type of str, bytes or bytearray"% (type(s),))
+    if isinstance(s, str):
+        s = s.encode(enco)
+    elif not isinstance(s, (bytes,bytearray)):
+        raise ProgrammingError("Cannot wrap %s in s4(), need type of str, bytes or bytearray"% (type(s),))
     assert len(s) < 16382, 'Length of string is %d for s1(), exceeds 16381 bytes'%len(s)
     return struct.pack('%sH'%byteorder,len(s)+2)+s
 
@@ -641,31 +633,23 @@ def s4(s, byteorder='@'):
     else:  # byteorder in '@='
         enco = UNICODE_INTERNAL
 
-    if sys.hexversion < 0x03010100:
-        if isinstance(s, unicode):
-            s = s.encode(enco)
-    else:
-        if isinstance(s, str):
-            s = s.encode(enco)
-        elif not isinstance(s, (bytes,bytearray)):
-            raise ProgrammingError("Cannot wrap %s in s4(), need type of str, bytes or bytearray"% (type(s),))
+    if isinstance(s, str):
+        s = s.encode(enco)
+    elif not isinstance(s, (bytes,bytearray)):
+        raise ProgrammingError("Cannot wrap %s in s4(), need type of str, bytes or bytearray"% (type(s),))
     return struct.pack('%sl'%byteorder,len(s)+4)+s
 
 def sl4(s, byteorder='@'):
     "return string with packed length of string. Used for AAL elements"
     size=1
-    if sys.hexversion < 0x03010100:
-        if isinstance(s, unicode):
-            size=2
-    else:
-        if isinstance(s, str):
-            size=2
-        elif not isinstance(s, (bytes,bytearray)):
-            raise ProgrammingError("Cannot wrap %s in s4(), need type of str, bytes or bytearray"% (type(s),))
+    if isinstance(s, str):
+        size=2
+    elif not isinstance(s, (bytes,bytearray)):
+        raise ProgrammingError("Cannot wrap %s in s4(), need type of str, bytes or bytearray"% (type(s),))
     return struct.pack('%sl'%byteorder, len(s)*size)
 
 #----------------------------------------------------------------------
-class Adabas(object):
+class Adabas:
     """
     Define the data structures and methods for Adabas database access.
 
@@ -1578,7 +1562,7 @@ class Adabas(object):
 
             while True:
                 try:
-                    isn, rlen, isq = mfgen.next()
+                    isn, rlen, isq = next(mfgen)
                     yield isn, dmap, isq
                 except DataEnd:
                     break # returns with StopIteration
@@ -2182,7 +2166,7 @@ class Adabas(object):
             i = int(value)
             self.vb.write(fpack(i,ffrm,fieldlen))  # binary data
             self.sb.write_text('%s,%d,%s'%(fieldname,fieldlen,ffrm))
-        elif ffrm == 'W' and type(value)==type(u''):   # unicode (UTF-16)
+        elif ffrm == 'W' and isinstance(value, str):   # unicode (UTF-16)
             #todo crit parameter eval
             if len(value)>0 and value[-1]=='*': # with wild card
                 ln=len(value)-1
@@ -2194,7 +2178,7 @@ class Adabas(object):
                 # this is different to adabas/mf which does
                 #          u'abc\u0000' <  u'abc' == u'abc '
                 uu=value # +u' '
-                ut=value+u'\uFA29'  # highest 2 byte value in ICU collation
+                ut=value+'\uFA29'  # highest 2 byte value in ICU collation
                                     # FFFF is the highest UTF-16 value (w/o surrogates)
                 # dump(s1(uu.encode(UNICODE_INTERNAL))+s1(ut.encode(UNICODE_INTERNAL)))
                 self.vb.write(s1(uu.encode(UNICODE_INTERNAL))
@@ -2204,7 +2188,7 @@ class Adabas(object):
                     ln=len(value)
                     if ln>fieldlen//2:
                         ln=fieldlen//2
-                    uu=value+(fieldlen//2-ln)*u' '
+                    uu=value+(fieldlen//2-ln)*' '
                     # print( ln,value,fieldlen,fieldname)
                     # dump(uu.encode(UNICODE_INTERNAL) )
                     self.vb.write(uu.encode(UNICODE_INTERNAL) )
@@ -2710,14 +2694,7 @@ class Adabasx(Adabas):
         dt = datetime.datetime.now()
         # uname() returns named tuple from Python 3.3
         # system, node, release, version, machine, processor
-        if sys.hexversion < 0x03030100:
-            class Uname(object):
-                pass
-            uname = Uname()
-            uname.system, uname.node, uname.release,uname.version,\
-                uname.machine, uname.processor = platform.uname()
-        else:
-            uname = platform.uname()
+        uname = platform.uname()
         ci.eye  = 'REVD'
         ci.ver  = '00'
         ci.ver  = '01'

@@ -7,16 +7,26 @@ It can access local and remote Adabas databases.
 adapya-adabas comes with scripts and sample programs to show its features.
 It is being used on Linux, mainframe z/OS, Solaris and Windows.
 
-Prerequisites for adapya-adabas are Python version 2.7, 3.5 or higher
-and the adapya-base package.
+Prerequisites for adapya-adabas are Python 3.13 or higher
+and the adapya-base package. The Adabas Client Library (ACL) must be
+installed on the host for the native ``libadalnkx`` linkage to load.
 
 
 Installation
 ~~~~~~~~~~~~
 
-::
+End users (recommended)::
+
+    uv pip install adapya-adabas
+
+Or with pip::
 
     pip install adapya-adabas
+
+Contributors / development setup::
+
+    uv sync
+    uv run pytest
 
 
 Links

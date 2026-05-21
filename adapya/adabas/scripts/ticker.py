@@ -43,7 +43,6 @@ Usage: python [-O] ticker.py --dbid <dbid> --fnr <fnr> --count <num>
     python ticker.py -d 241 -f 12 -c 100 -b    # read at max 100 records
 
 """
-from __future__ import print_function          # PY3
 
 __date__ = '$Date: 2019-09-04 15:18:09 +0200 (Wed, 04 Sep 2019) $'
 __revision__ = '$Rev: 938 $'
@@ -142,12 +141,8 @@ c1.dbid=DBID
 c1.cb.fnr=FNR
 
 
-if sys.hexversion > 0x3010100:
-    def bytetime(t):
-        return time.strftime( ' %Y-%m-%d %H:%M:%S', t).encode(c1.encoding)
-else:
-    def bytetime(t):
-        return time.strftime( ' %Y-%m-%d %H:%M:%S', t)
+def bytetime(t):
+    return time.strftime( ' %Y-%m-%d %H:%M:%S', t).encode(c1.encoding)
 
 if REPLYTIMEOUT:
     rsp=adaSetTimeout(REPLYTIMEOUT)

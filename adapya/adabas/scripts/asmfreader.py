@@ -38,7 +38,6 @@
         asmfreader -d mm.db8.smf -h da3f
 
 """
-from __future__ import print_function          # PY3
 import sys,os
 import getopt
 from adapya.base.jconfig import getparms,setparms,SHOWCONFIG
