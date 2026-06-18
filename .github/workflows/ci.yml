@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check adapya
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Install built wheel into the project env
+        run: uv pip install --reinstall dist/*.whl
+      - name: Pytest (smoke; ACL skipped)
+        env:
+          ADAPYA_SKIP_NATIVE_LOAD: "1"
+        run: uv run pytest tests/ -q

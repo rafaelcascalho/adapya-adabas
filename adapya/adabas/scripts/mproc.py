@@ -20,7 +20,6 @@
 $Date: 2018-03-16 10:55:56 +0100 (Fri, 16 Mar 2018) $
 $Rev: 794 $
 """
-from __future__ import print_function          # PY3
 
 import time, datetime, getopt, os, sys
 import adapya.base
@@ -160,7 +159,7 @@ if __name__ == '__main__':
     if thding:
         from threading import Lock
         from threading import Thread as Process
-        class Value(object):
+        class Value:
             def __init__(self,typ,val):
                 self.value=val
 

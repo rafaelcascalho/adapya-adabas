@@ -28,7 +28,6 @@ The following views are accessible:
 $Date: 2018-10-10 18:37:47 +0200 (Wed, 10 Oct 2018) $
 $Rev: 876 $
 """
-from __future__ import print_function          # PY3
 from collections import namedtuple
 
 from adapya.base.datamap import Datamap,String,Unpacked

@@ -17,7 +17,6 @@ The fields module defines the following functions:
 - str2fndef(): create fndef string from field definition string
 
 """
-from __future__ import print_function          # PY3
 
 __date__="$Date: 2019-09-04 15:18:09 +0200 (Wed, 04 Sep 2019) $"
 __rev__="$Rev: 938 $"
@@ -132,7 +131,7 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
                 ftype = ebc2str(ftype)  # ebc2str supports PY3
                 fname = ebc2str(fname)
                 format = ebc2str(format)
-            elif sys.hexversion > 0x03010100:
+            else:
                 # Python 3
                 ftype = ftype.decode()
                 fname = fname.decode()
@@ -208,7 +207,7 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
 
                 if sys.platform == 'zos':   # data is in EBCDIC
                     par = ebc2str(par)      # ebc2str supports PY3
-                elif sys.hexversion > 0x03010100:
+                else:
                     par = par.decode()
 
                 if casl>0:
@@ -286,7 +285,7 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
 
                 if sys.platform == 'zos':   # data is in EBCDIC
                     par = ebc2str(par)      # ebc2str supports PY3
-                elif sys.hexversion > 0x03010100:
+                else:
                     par = par.decode()
 
                 if op2 &   2: foptions['DELD'] = None # disabled descriptor / xopt==2
@@ -361,7 +360,7 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
 
                     if sys.platform == 'zos':   # data is in EBCDIC
                         par = ebc2str(par)      # ebc2str supports PY3
-                    elif sys.hexversion > 0x03010100:
+                    else:
                         par = par.decode()
 
                     pars.append('%s(%d,%d)' % (par,ffrom,fto))
@@ -392,7 +391,7 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
 
                 if sys.platform == 'zos':                     # data is in EBCDIC
                     ripk, rifk = ebc2str(ripk), ebc2str(ripk) # ebc2str supports PY3
-                elif sys.hexversion > 0x03010100:
+                else:
                     ripk, rifk = ripk.decode(), rifk.decode()
 
                 if printfdt:
@@ -452,7 +451,7 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
 
             if sys.platform == 'zos':  # data is in EBCDI; ebc2str() supports PY3
                 ftype, fname, format = ebc2str(ftype), ebc2str(fname), ebc2str(format)
-            elif sys.hexversion > 0x03010100:
+            else:
                 ftype,fname,format = ftype.decode(), fname.decode(), format.decode()
 
             foptions = {}
@@ -605,8 +604,6 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
                 if printfdt:
                     pname = chr(level)+chr(len)   # construct parent name
 
-                    if sys.platform == 'zos' and sys.hexversion < 0x03010100:  # data is in EBCDI
-                        pname = ebc2str(pname) # ebc2str() supports PY3
 
                     par = '%s(%d,%d)' % (pname, ord(format),op2)
 
@@ -636,8 +633,6 @@ def readfdt(dbid, fnr, printfdt=0, fd=None, pwd='', xopt=1, specials=False ):
 
                     pname = chr(level)+chr(len)   # construct parent name
 
-                    if sys.platform == 'zos' and sys.hexversion < 0x03010100:  # data is in EBCDI
-                        pname = ebc2str(pname) # ebc2str() supports PY3
 
                     par=[ '%s(%d,%d)' % (pname, ord(format),op2) ] # first parent
 
@@ -759,7 +754,7 @@ def str2fndef(s, verbose=0):
         except ValueError:
             if ss[2].startswith('PE'):
                 # check if occurrences are specified  PE(100)
-                mat = re.search("""\( (\d+) \)""", ss[2][2:],re.VERBOSE)
+                mat = re.search(r"""\( (\d+) \)""", ss[2][2:],re.VERBOSE)
                 if mat:
                     occs = int (mat.group(1))
                     fnopt['PE'] = occs
@@ -775,7 +770,7 @@ def str2fndef(s, verbose=0):
         if len(oo) <= 1:
             if kv.startswith('MU'):
                 # check if occurrences are specified  MU(30)
-                mat = re.search("""\( (\d+) \)""", kv[2:],re.VERBOSE)
+                mat = re.search(r"""\( (\d+) \)""", kv[2:],re.VERBOSE)
                 if mat:
                     occs = int (mat.group(1))
                     fnopt['MU'] = occs
@@ -810,7 +805,7 @@ def fdtfile2list(filename,withname=0):
     fdtlines=[]
     longname=''
     if type(filename) == str:
-        f=open(filename,'r')
+        f=open(filename)
     else:
         f=filename  # assuming StringIO object
     for line in f.readlines():
@@ -818,7 +813,7 @@ def fdtfile2list(filename,withname=0):
         if line.startswith('*'): continue
         j = line.find(';')                 # start of comment part
         if j>0:
-            m=re.search('[-\w]+',line[j+1:-1]) # first word after ;
+            m=re.search(r'[-\w]+',line[j+1:-1]) # first word after ;
             if m:
                 ln = m.group()
                 longname = m.group()

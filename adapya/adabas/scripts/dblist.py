@@ -47,7 +47,6 @@
 $Date: 2022-02-04 18:25:45 +0100 (Fri, 04 Feb 2022) $
 $Rev: 1025 $
 """
-from __future__ import print_function          # PY3
 
 from adapya.adabas.api import Adabas, Adabasx, archit2str, adaSetParameter
 from adapya.adabas.api import DatabaseError, InterfaceError, adaSetTimeout
